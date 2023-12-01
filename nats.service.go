@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 
 	P "typology-processor/proto"
 
@@ -17,7 +18,7 @@ func Subscribe() {
 }
 
 func HandleResponse(data *P.FRMSMessage_Typologyresult) {
-	natsConnection, _ = nats.Connect("nats://127.0.0.1:14222")
+	natsConnection, _ = nats.Connect(os.Getenv("SERVER_URL"))
 	log.Println("Connected to " + nats.DefaultURL)
 
 	log.Println("Sending Message...")

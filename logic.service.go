@@ -13,14 +13,6 @@ import (
 )
 
 func HandleTransaction(message *P.FRMSMessage) {
-	// parsedMessage := P.FRMSMessage{}
-	// err := json.Unmarshal([]byte(message), &parsedMessage)
-
-	// if err != nil {
-	// 	fmt.Println(err)
-	// 	return
-	// }
-
 	networkmap := message.NetworkMap
 	ruleResult := message.RuleResult
 	transaction := message.Transaction

@@ -6,6 +6,7 @@ require github.com/nats-io/nats.go v1.28.0
 
 require (
 	github.com/arangodb/go-velocypack v0.0.0-20200318135517-5af53c29c67e // indirect
+	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
 )

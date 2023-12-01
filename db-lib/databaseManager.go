@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"strconv"
 
 	P "typology-processor/proto"
 	M "typology-processor/structs"
@@ -19,10 +21,13 @@ var DbClient driver.Client
 var ConnectionDB driver.Database
 
 func InitDatabases() {
+
+	redisDB, _ := strconv.Atoi(os.Getenv("REDIS_DB"))
+
 	Client = redis.NewClient(&redis.Options{
-		Addr:     "localhost:16379",
+		Addr:     "192.168.1.114:16379",
 		Password: "",
-		DB:       0,
+		DB:       redisDB,
 	})
 
 	_, err := Client.Ping().Result()
@@ -36,7 +41,7 @@ func InitDatabases() {
 
 	// Create an HTTP connection to the database
 	conn, err := http.NewConnection(http.ConnectionConfig{
-		Endpoints: []string{"http://localhost:18529"},
+		Endpoints: []string{os.Getenv("DATABASE_URL")},
 	})
 	if err != nil {
 		fmt.Println(err)

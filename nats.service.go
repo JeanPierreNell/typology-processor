@@ -43,7 +43,6 @@ func Subscribe(function natsFunction) {
 		function(message)
 		log.Println("Message Resolved.")
 	})
-
 }
 
 func HandleResponse(data *P.FRMSMessage) {

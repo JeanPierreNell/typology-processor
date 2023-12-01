@@ -59,9 +59,6 @@ func executeRequest(transaction *P.FRMSMessage_Transaction, typology *P.FRMSMess
 	typologyResult.Cfg = typology.Cfg
 	typologyResult.Id = typology.Id
 
-	//Send Response to NATS
-	//HandleResponse(&typologyResult)
-
 	return &typologyResult, ""
 }
 

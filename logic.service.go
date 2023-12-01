@@ -19,18 +19,25 @@ func HandleTransaction(message *P.FRMSMessage) {
 
 	for _, channel := range networkmap.Messages[0].Channels {
 		for _, typology := range channel.Typologies {
-			executeRequest(transaction, typology, ruleResult, networkmap)
+			typologyResult, err := executeRequest(transaction, typology, ruleResult, networkmap)
+
+			if typologyResult != nil {
+				message.TypologyResult = typologyResult
+				HandleResponse(message)
+			} else {
+				println(err)
+			}
 		}
 	}
 }
 
-func executeRequest(transaction *P.FRMSMessage_Transaction, typology *P.FRMSMessage_Typologies, ruleResult *P.FRMSMessage_Ruleresults, networkMap *P.FRMSMessage_Networkmap) {
+func executeRequest(transaction *P.FRMSMessage_Transaction, typology *P.FRMSMessage_Typologies, ruleResult *P.FRMSMessage_Ruleresults, networkMap *P.FRMSMessage_Networkmap) (*P.FRMSMessage_Typologyresult, string) {
 	transactionID := transaction.FIToFIPmtSts.GrpHdr.MsgId
 	cacheKey := fmt.Sprintf("TP_%s_%s_%s", transactionID, typology.Id, typology.Cfg)
 	jruleResultsCount := db.AddOneGetCount(cacheKey, ruleResult)
 
 	if int(jruleResultsCount) < len(typology.Rules) {
-		return
+		return nil, "Error"
 	}
 
 	jruleResults := db.GetMembers(cacheKey)
@@ -53,7 +60,9 @@ func executeRequest(transaction *P.FRMSMessage_Transaction, typology *P.FRMSMess
 	typologyResult.Id = typology.Id
 
 	//Send Response to NATS
-	HandleResponse(&typologyResult)
+	//HandleResponse(&typologyResult)
+
+	return &typologyResult, ""
 }
 
 func evaluateTypologyExpression(ruleValues []M.RuleConfig, ruleResults []*P.FRMSMessage_Ruleresults, typologyExpression M.TypologyExpression) uint32 {

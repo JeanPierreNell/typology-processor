@@ -11,13 +11,13 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-var natsConnection *nats.Conn //, _ = nats.Connect("nats://127.0.0.1:14222")
+var natsConnection *nats.Conn
 
 func Subscribe() {
 
 }
 
-func HandleResponse(data *P.FRMSMessage_Typologyresult) {
+func HandleResponse(data *P.FRMSMessage) {
 	natsConnection, _ = nats.Connect(os.Getenv("SERVER_URL"))
 	log.Println("Connected to " + nats.DefaultURL)
 
@@ -28,6 +28,6 @@ func HandleResponse(data *P.FRMSMessage_Typologyresult) {
 
 	message, _ := proto.Marshal(data)
 
-	natsConnection.Publish("TPOUT", message)
+	natsConnection.Publish(os.Getenv("PRODUCER_STREAM"), message)
 	log.Println("Message Send.")
 }

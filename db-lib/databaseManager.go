@@ -17,26 +17,47 @@ import (
 )
 
 var Client *redis.Client
+var ClusterClient *redis.ClusterClient
+
 var DbClient driver.Client
 var ConnectionDB driver.Database
+var redisCluster bool
+var redisServers []M.RedisConnection
 
 func InitDatabases() {
 
 	redisDB, _ := strconv.Atoi(os.Getenv("REDIS_DB"))
+	redisCluster, _ = strconv.ParseBool(os.Getenv("REDIS_IS_CLUSTER"))
+	redisPassword := os.Getenv("REDIS_AUTH")
 
-	Client = redis.NewClient(&redis.Options{
-		Addr:     "192.168.1.114:16379",
-		Password: "",
-		DB:       redisDB,
-	})
+	json.Unmarshal([]byte(os.Getenv("REDIS_SERVERS")), &redisServers)
 
-	_, err := Client.Ping().Result()
+	if redisCluster {
+		serverAddresses := make([]string, len(redisServers))
+		for _, element := range redisServers {
+			server := element.Host + ":" + strconv.Itoa(element.Port)
+			serverAddresses = append(serverAddresses, server)
+		}
 
-	if err != nil {
-		fmt.Println(err)
-		return
+		ClusterClient = redis.NewClusterClient(&redis.ClusterOptions{
+			Addrs:    serverAddresses,
+			Password: redisPassword,
+		})
 	} else {
-		fmt.Println("Connection to redis successful!")
+		Client = redis.NewClient(&redis.Options{
+			Addr:     redisServers[0].Host + ":" + strconv.Itoa(redisServers[0].Port),
+			Password: redisPassword,
+			DB:       redisDB,
+		})
+
+		_, err := Client.Ping().Result()
+
+		if err != nil {
+			fmt.Println(err)
+			return
+		} else {
+			fmt.Println("Connection to redis successful!")
+		}
 	}
 
 	// Create an HTTP connection to the database
@@ -62,18 +83,30 @@ func InitDatabases() {
 
 func AddOneGetCount(cacheKey string, data *P.FRMSMessage_Ruleresults) int64 {
 	redisData, _ := json.Marshal(data)
-	err := Client.SAdd(cacheKey, redisData).Err()
+	var err error
+	var returnValue int64
+
+	if redisCluster {
+		err = ClusterClient.SAdd(cacheKey, redisData).Err()
+		returnValue, _ = ClusterClient.SCard(cacheKey).Result()
+	} else {
+		err = Client.SAdd(cacheKey, redisData).Err()
+		returnValue, _ = Client.SCard(cacheKey).Result()
+	}
 
 	if err != nil {
 		fmt.Println(err)
 	}
-
-	returnValue, _ := Client.SCard(cacheKey).Result()
 	return returnValue
 }
 
 func GetMembers(cacheKey string) []string {
-	returnValue, _ := Client.SMembers(cacheKey).Result()
+	var returnValue []string
+	if redisCluster {
+		returnValue, _ = ClusterClient.SMembers(cacheKey).Result()
+	} else {
+		returnValue, _ = Client.SMembers(cacheKey).Result()
+	}
 	return returnValue
 }
 

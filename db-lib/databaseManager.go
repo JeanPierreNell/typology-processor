@@ -70,6 +70,10 @@ func InitDatabases() {
 	// Create a client
 	DbClient, err := driver.NewClient(driver.ClientConfig{
 		Connection: conn,
+		Authentication: driver.BasicAuthentication(
+			os.Getenv("DATABASE_USER"),
+			os.Getenv("DATABASE_PASSWORD"),
+		),
 	})
 	if err != nil {
 		fmt.Println(err)

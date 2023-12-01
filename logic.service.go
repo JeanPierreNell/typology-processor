@@ -5,23 +5,25 @@ import (
 	"fmt"
 	"strconv"
 	db "typology-processor/db-lib"
+	P "typology-processor/proto"
+
 	M "typology-processor/structs"
 
 	"golang.org/x/exp/slices"
 )
 
-func HandleTransaction(message string) {
-	parsedMessage := M.TransactionRequest{}
-	err := json.Unmarshal([]byte(message), &parsedMessage)
+func HandleTransaction(message *P.FRMSMessage) {
+	// parsedMessage := P.FRMSMessage{}
+	// err := json.Unmarshal([]byte(message), &parsedMessage)
 
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
 
-	networkmap := parsedMessage.NetworkMap
-	ruleResult := parsedMessage.RuleResult
-	transaction := parsedMessage.Transaction
+	networkmap := message.NetworkMap
+	ruleResult := message.RuleResult
+	transaction := message.Transaction
 
 	for _, channel := range networkmap.Messages[0].Channels {
 		for _, typology := range channel.Typologies {
@@ -30,7 +32,7 @@ func HandleTransaction(message string) {
 	}
 }
 
-func executeRequest(transaction M.Pain002, typology M.Typology, ruleResult M.RuleResult, networkMap M.NetworkMap) {
+func executeRequest(transaction *P.FRMSMessage_Transaction, typology *P.FRMSMessage_Typologies, ruleResult *P.FRMSMessage_Ruleresults, networkMap *P.FRMSMessage_Networkmap) {
 	transactionID := transaction.FIToFIPmtSts.GrpHdr.MsgId
 	cacheKey := fmt.Sprintf("TP_%s_%s_%s", transactionID, typology.Id, typology.Cfg)
 	jruleResultsCount := db.AddOneGetCount(cacheKey, ruleResult)
@@ -40,55 +42,56 @@ func executeRequest(transaction M.Pain002, typology M.Typology, ruleResult M.Rul
 	}
 
 	jruleResults := db.GetMembers(cacheKey)
-	ruleResults := make([]M.RuleResult, 0)
+	ruleResults := make([]*P.FRMSMessage_Ruleresults, 0)
 
 	for _, ruleResult := range jruleResults {
-		currentRule := M.RuleResult{}
+		currentRule := P.FRMSMessage_Ruleresults{}
 		json.Unmarshal([]byte(ruleResult), &currentRule)
-		ruleResults = append(ruleResults, currentRule)
+		ruleResults = append(ruleResults, &currentRule)
 	}
 
 	typologyExpression := db.GetTypologyExpression(typology)
 	typologyResultValue := evaluateTypologyExpression(typologyExpression.Rules, ruleResults, typologyExpression)
 	fmt.Print(typologyResultValue)
 
-	typologyResult := M.TypologyResult{}
+	typologyResult := P.FRMSMessage_Typologyresult{}
 	typologyResult.Result = typologyResultValue
-	typologyResult.RuleResult = ruleResults
+	typologyResult.RuleResults = ruleResults
 	typologyResult.Cfg = typology.Cfg
 	typologyResult.Id = typology.Id
 
 	//Send Response to NATS
-	HandleResponse(typologyResult)
+	HandleResponse(&typologyResult)
 }
 
-func evaluateTypologyExpression(ruleValues []M.RuleConfig, ruleResults []M.RuleResult, typologyExpression M.TypologyExpression) float64 {
-	toReturn := 0.0
+func evaluateTypologyExpression(ruleValues []M.RuleConfig, ruleResults []*P.FRMSMessage_Ruleresults, typologyExpression M.TypologyExpression) uint32 {
+	var toReturn uint32 = 0
 	for _, rule := range ruleResults {
-		ruleResult := ruleResults[slices.IndexFunc(ruleResults, func(r M.RuleResult) bool {
+		ruleResult := ruleResults[slices.IndexFunc(ruleResults, func(r *P.FRMSMessage_Ruleresults) bool {
 			return rule.Id == typologyExpression.Expression.Terms[0].Id && rule.Cfg == typologyExpression.Expression.Terms[0].Cfg
 		})]
-		ruleVal := 0.0
+
+		var ruleVal uint64 = 0
 
 		if ruleResult.Result {
-			ruleVal, _ = strconv.ParseFloat(ruleValues[slices.IndexFunc(ruleValues, func(v M.RuleConfig) bool {
+			ruleVal, _ = strconv.ParseUint(ruleValues[slices.IndexFunc(ruleValues, func(v M.RuleConfig) bool {
 				return rule.Id == typologyExpression.Expression.Terms[0].Id && rule.Cfg == typologyExpression.Expression.Terms[0].Cfg
-			})].True, 1) //Add Stuff / Rework
+			})].True, 10, 32) //Add Stuff / Rework
 		} else {
-			ruleVal, _ = strconv.ParseFloat(ruleValues[slices.IndexFunc(ruleValues, func(v M.RuleConfig) bool {
+			ruleVal, _ = strconv.ParseUint(ruleValues[slices.IndexFunc(ruleValues, func(v M.RuleConfig) bool {
 				return rule.Id == typologyExpression.Expression.Terms[0].Id && rule.Cfg == typologyExpression.Expression.Terms[0].Cfg
-			})].False, 1)
+			})].False, 10, 32) //Find way to direct parse to uint32
 		}
 
 		switch typologyExpression.Expression.Operator {
 		case "+":
-			toReturn += ruleVal
+			toReturn += uint32(ruleVal)
 		case "-":
-			toReturn -= ruleVal
+			toReturn -= uint32(ruleVal)
 		case "*":
-			toReturn *= ruleVal
+			toReturn *= uint32(ruleVal)
 		case "/":
-			toReturn /= ruleVal
+			toReturn /= uint32(ruleVal)
 		}
 	}
 	// if typologyExpression.Expression.Operator != "" {

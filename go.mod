@@ -13,7 +13,7 @@ require (
 require (
 	github.com/arangodb/go-driver v1.6.0
 	github.com/go-redis/redis v6.15.9+incompatible // indirect
-	github.com/golang/protobuf v1.5.0 // indirect
+	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/klauspost/compress v1.16.5 // indirect
 	github.com/nats-io/nats-server/v2 v2.1.9 // indirect
 	github.com/nats-io/nkeys v0.4.4 // indirect

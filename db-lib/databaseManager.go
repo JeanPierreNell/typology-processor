@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	P "typology-processor/proto"
 	M "typology-processor/structs"
 
 	driver "github.com/arangodb/go-driver"
@@ -54,7 +55,7 @@ func InitDatabases() {
 	}
 }
 
-func AddOneGetCount(cacheKey string, data M.RuleResult) int64 {
+func AddOneGetCount(cacheKey string, data *P.FRMSMessage_Ruleresults) int64 {
 	redisData, _ := json.Marshal(data)
 	err := Client.SAdd(cacheKey, redisData).Err()
 
@@ -71,7 +72,7 @@ func GetMembers(cacheKey string) []string {
 	return returnValue
 }
 
-func GetTypologyExpression(typology M.Typology) M.TypologyExpression {
+func GetTypologyExpression(typology *P.FRMSMessage_Typologies) M.TypologyExpression {
 	query := fmt.Sprintf(`FOR doc IN typologyExpression FILTER doc.id == '%s' AND doc.cfg == '%s' RETURN doc`,
 		typology.Id, typology.Cfg)
 

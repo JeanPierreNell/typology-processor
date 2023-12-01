@@ -5,8 +5,10 @@ import (
 	"runtime"
 
 	db "typology-processor/db-lib"
+	P "typology-processor/proto"
 
 	"github.com/nats-io/nats.go"
+	"google.golang.org/protobuf/proto"
 )
 
 const subject = "TP"
@@ -25,7 +27,16 @@ func main() {
 	// Subscribe to subject & Handle incoming messages.
 	natsConnection.Subscribe(subject, func(msg *nats.Msg) {
 		log.Println("Recieved Message. Processing...")
-		HandleTransaction(string(msg.Data))
+
+		message := &P.FRMSMessage{}
+		err := proto.Unmarshal(msg.Data, message)
+
+		if err != nil {
+			log.Fatal("Could not unmarshal Protobuff object.")
+		}
+
+		// HandleTransaction(string(msg.Data))
+		HandleTransaction(message)
 
 		log.Println("Message Resolved.")
 	})
